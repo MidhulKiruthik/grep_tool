@@ -1,0 +1,181 @@
+# grep_tool
+Python Grep Implementation
+import re
+import os
+
+# ANSI color codes
+COLOR_RED = '\033[91m'
+COLOR_RESET = '\033[0m'
+
+def match_pattern(filename, pattern):
+    """
+    Check if a filename matches a specified pattern.
+
+    Args:
+        filename (str): The filename to check.
+        pattern (str): The pattern to match against.
+
+    Returns:
+        bool: True if the filename matches the pattern, False otherwise.
+    """
+    if not pattern:
+        return True
+    if not filename:
+        return False
+    if pattern[0] == '*':
+        return match_pattern(filename[1:], pattern) or match_pattern(filename, pattern[1:])
+    return (pattern[0] == '?' or pattern[0] == filename[0]) and match_pattern(filename[1:], pattern[1:])
+
+def filter_filenames(filenames, include_patterns=None, exclude_patterns=None):
+    """
+    Filter filenames based on inclusion and exclusion patterns.
+
+    Args:
+        filenames (list): List of filenames to filter.
+        include_patterns (list, optional): List of inclusion patterns. Defaults to None.
+        exclude_patterns (list, optional): List of exclusion patterns. Defaults to None.
+
+    Returns:
+        list: Filtered list of filenames.
+    """
+    included_files = []
+    for filename in filenames:
+        for pattern in include_patterns or ['*']:
+            if match_pattern(filename, pattern):
+                included_files.append(filename)
+                break
+
+    excluded_files = set()
+    for filename in filenames:
+        for pattern in exclude_patterns or []:
+            if match_pattern(filename, pattern):
+                excluded_files.add(filename)
+                break
+    filtered_filenames = []
+    for filename in included_files:
+        if filename not in excluded_files:
+            filtered_filenames.append(filename)
+    return filtered_filenames
+
+def recursive_search(directory='.', include_patterns=None, exclude_patterns=None):
+    """
+    Recursively search for files within a directory.
+
+    Args:
+        directory (str, optional): Directory to search. Defaults to '.'.
+        include_patterns (list, optional): List of inclusion patterns. Defaults to None.
+        exclude_patterns (list, optional): List of exclusion patterns. Defaults to None.
+
+    Returns:
+        list: List of filtered filenames.
+    """
+    all_files = []
+
+    def traverse_dir(directory):
+        for item in os.listdir(directory):
+            full_path = os.path.join(directory, item)
+            if os.path.isfile(full_path):
+                all_files.append(full_path)
+            elif os.path.isdir(full_path):
+                traverse_dir(full_path)
+
+    traverse_dir(directory)
+    return filter_filenames(all_files, include_patterns, exclude_patterns)
+
+def grep(pattern, filenames, case_=False, lineno_=False, matchno_=False, include_patterns=None, exclude_patterns=None, recursives_=False, wholeword_=False, invert_=False, color_=False, contextlines_=0):
+    """
+    Perform text search within files.
+
+    Arguments:
+        pattern (str): Search pattern.
+        filenames (list): List of filenames to search.
+        case_ (bool, optional): Case sensitivity option. Defaults to False.
+        lineno_ (bool, optional): Display line numbers. Defaults to False.
+        matchno_ (bool, optional): Count only the number of matching lines. Defaults to False.
+        include_patterns (list, optional): List of inclusion patterns. Defaults to None.
+        exclude_patterns (list, optional): List of exclusion patterns. Defaults to None.
+        recursives_ (bool, optional): Recursive search option. Defaults to False.
+        wholeword_ (bool, optional): Search for whole words only. Defaults to False.
+        invert_ (bool, optional): Invert the match option. Defaults to False.
+        color_ (bool, optional): Color matched text option. Defaults to False.
+        contextlines_ (int, optional): Number of context lines. Defaults to 0.
+    """
+    if case_:
+        flags = re.IGNORECASE
+    else:
+        flags = 0
+    total_matches = 0
+
+    if wholeword_:
+        pattern = r'\b{}\b'.format(re.escape(pattern))
+
+    if recursives_:
+        filenames = recursive_search(include_patterns=include_patterns, exclude_patterns=exclude_patterns)
+
+    for filename in filenames:
+        try:
+            with open(filename, 'r') as file:
+                line_number = 0
+                for line in file:
+                    line_number += 1
+                    match = re.search(pattern, line, flags)
+                    if (match is not None and not invert_) or (match is None and invert_):
+                        total_matches += 1
+                        if matchno_:
+                            continue
+                        if lineno_:
+                            print(f"{filename}:{line_number}: {line.strip()}")
+                        else:
+                            if color_:
+                                line = highlight_matched_text(line, match.start(), match.end())
+                            print(f"{filename}: {line.strip()}")
+                        if contextlines_ > 0:
+                            start_index = max(0, line_number - contextlines_ - 1)
+                            end_index = min(len(lines), line_number + contextlines_)
+                            for j in range(start_index, end_index):
+                                if j != line_number - 1:
+                                    print(f"  {filename}:{j + 1}: {lines[j].strip()}")
+        except FileNotFoundError:
+            print(f"grep: {filename}: No such file or directory")
+
+    if matchno_:
+        print(f"Total matching lines: {total_matches}")
+
+def highlight_matched_text(line, start, end):
+    """
+    Highlight matched text with ANSI color codes.
+
+    Args:
+        line (str): Input line.
+        start (int): Start index of the matched text.
+        end (int): End index of the matched text.
+
+    Returns:
+        str: Highlighted line.
+    """
+    return line[:start] + COLOR_RED + line[start:end] + COLOR_RESET + line[end:]
+
+if __name__ == "__main__":
+    pattern = input("Enter the pattern: ").strip()
+    filenames = input("Enter the filenames (separated by spaces): ").strip().split()
+    caseip = input("Case sensitivity option (-i for case-insensitive search, press Enter for case-sensitive search): ").strip().lower()
+    lineno = input("Display line numbers? (y/n): ").strip().lower()
+    matchno = input("Count only (-c to count the number of matching lines): ").strip().lower()
+    incl_pattern = input("Include patterns (separated by spaces, leave empty for no inclusion filter): ").strip().split()
+    exl_pattern = input("Exclude patterns (separated by spaces, leave empty for no exclusion filter): ").strip().split()
+    recursives = input("Recursive search? (y/n): ").strip().lower()
+    wholeword = input("Search for whole words only? (y/n): ").strip().lower()
+    invert = input("Invert the match? (y/n): ").strip().lower()
+    color = input("color_ matched text? (y/n): ").strip().lower()
+    contextlines = input("Number of context lines (before and after) each matching line (0 for no context): ").strip()
+
+    case_ = caseip == '-i'
+    lineno_ = lineno == 'y'
+    matchno_ = matchno == '-c'
+    recursives_ = recursives == 'y'
+    wholeword_ = wholeword == 'y'
+    invert_ = invert == 'y'
+    color_ = color == 'y'
+    contextlines_ = int(contextlines)
+
+    grep(pattern, filenames, case_, lineno_, matchno_, incl_pattern, exl_pattern, recursives_, wholeword_, invert_, color_, contextlines_)
