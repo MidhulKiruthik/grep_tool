@@ -158,9 +158,9 @@ def highlight_matched_text(line, start, end):
 if __name__ == "__main__":
     pattern = input("Enter the pattern: ").strip()
     filenames = input("Enter the filenames (separated by spaces): ").strip().split()
-    caseip = input("Case sensitivity option (-i for case-insensitive search, press Enter for case-sensitive search): ").strip().lower()
+    caseip = input("Case sensitivity option (i for case-insensitive search, press Enter for case-sensitive search): ").strip().lower()
     lineno = input("Display line numbers? (y/n): ").strip().lower()
-    matchno = input("Count only (-c to count the number of matching lines): ").strip().lower()
+    matchno = input("Count only (c to count the number of matching lines): ").strip().lower()
     incl_pattern = input("Include patterns (separated by spaces, leave empty for no inclusion filter): ").strip().split()
     exl_pattern = input("Exclude patterns (separated by spaces, leave empty for no exclusion filter): ").strip().split()
     recursives = input("Recursive search? (y/n): ").strip().lower()
@@ -169,9 +169,9 @@ if __name__ == "__main__":
     color = input("color_ matched text? (y/n): ").strip().lower()
     contextlines = input("Number of context lines (before and after) each matching line (0 for no context): ").strip()
 
-    case_ = caseip == '-i'
+    case_ = caseip == 'i'
     lineno_ = lineno == 'y'
-    matchno_ = matchno == '-c'
+    matchno_ = matchno == 'c'
     recursives_ = recursives == 'y'
     wholeword_ = wholeword == 'y'
     invert_ = invert == 'y'
